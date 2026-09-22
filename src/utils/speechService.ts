@@ -1,11 +1,14 @@
 /**
  * Speech Service for Bela Pizza
- * Implements Web Speech API with Brazilian Portuguese prioritization,
+ * Implements Web Speech API with advanced Brazilian Portuguese neural voice ranking,
+ * natural prosody/cadence formatting, humanized pacing & pitch calibration,
  * garbage collection protection, mobile autoplay gesture unlocking,
  * audio chime feedback, and mute state persistence.
  */
 
 type Listener = () => void;
+
+export type SpeechPreset = 'natural-calorosa' | 'expressiva' | 'suave';
 
 class SpeechService {
   private isMuted: boolean = false;
@@ -16,6 +19,7 @@ class SpeechService {
   private listeners: Set<Listener> = new Set();
   private audioContext: AudioContext | null = null;
   private unlocked: boolean = false;
+  private speechPreset: SpeechPreset = 'natural-calorosa';
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -24,63 +28,135 @@ class SpeechService {
         this.isMuted = storedMute === 'true';
       }
 
+      const storedPreset = sessionStorage.getItem('bela_pizza_preset') as SpeechPreset | null;
+      if (storedPreset) {
+        this.speechPreset = storedPreset;
+      }
+
       this.initVoices();
+
       if ('speechSynthesis' in window) {
         window.speechSynthesis.onvoiceschanged = () => {
           this.initVoices();
         };
+        // Some browsers take a brief delay to populate voices
+        setTimeout(() => this.initVoices(), 250);
+        setTimeout(() => this.initVoices(), 800);
       }
     }
   }
 
   private initVoices() {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-    this.voices = window.speechSynthesis.getVoices();
-    this.selectBestBrazilianVoice();
-    this.notify();
+    const allVoices = window.speechSynthesis.getVoices();
+    if (allVoices.length > 0) {
+      this.voices = allVoices;
+      this.selectBestBrazilianVoice();
+      this.notify();
+    }
+  }
+
+  /**
+   * Scores voices to find the most human, natural, neural Brazilian Portuguese voice available.
+   * Prioritizes Microsoft Online (Natural), Apple Enhanced/Premium, and Google neural voices,
+   * while filtering out robotic synthesizers like eSpeak or monotone desktop voices.
+   */
+  private scoreVoice(voice: SpeechSynthesisVoice): number {
+    const name = (voice.name || '').toLowerCase();
+    const lang = (voice.lang || '').replace('_', '-').toLowerCase();
+
+    // 1. Language matching
+    let isPtBr = lang === 'pt-br' || lang === 'pt_br';
+    let isPt = lang.startsWith('pt');
+
+    if (!isPt) return -9999; // Non-Portuguese voices disqualified
+
+    let score = isPtBr ? 250 : 60;
+
+    // 2. High-quality neural / natural indicators (highest priority for human-like speech)
+    if (name.includes('natural')) score += 350; // Microsoft Edge Azure Natural voices (e.g. Francisca Natural)
+    if (name.includes('neural')) score += 300;
+    if (name.includes('online')) score += 200;
+    if (name.includes('premium')) score += 260; // Apple Studio Premium voices
+    if (name.includes('enhanced')) score += 220; // Apple Enhanced voices
+    if (name.includes('google') || name.includes('chrome')) score += 180; // Google Brazilian Portuguese neural voice
+
+    // 3. Female / Warm persona preferred for Bela
+    const warmFemaleNames = [
+      'francisca',
+      'thalita',
+      'brenda',
+      'leticia',
+      'letícia',
+      'luciana',
+      'camila',
+      'joana',
+      'vitória',
+      'vitoria',
+      'yara',
+      'maria',
+      'heloisa',
+      'elza',
+    ];
+    if (warmFemaleNames.some((n) => name.includes(n))) {
+      score += 90;
+    }
+
+    // 4. Remote / cloud service voices (localService === false means cloud neural synthesis)
+    if (voice.localService === false) {
+      score += 120;
+    }
+
+    // 5. Heavy penalty for known robotic/antiquated voices
+    if (
+      name.includes('espeak') ||
+      name.includes('mbrola') ||
+      name.includes('desktop') ||
+      name.includes('sapi')
+    ) {
+      score -= 300;
+    }
+
+    return score;
   }
 
   private selectBestBrazilianVoice() {
     if (this.voices.length === 0) return;
 
-    // Prioritize natural Brazilian Portuguese voices
-    const ptBrVoices = this.voices.filter((v) => {
+    // Filter to Portuguese voices
+    const ptVoices = this.voices.filter((v) => {
       const lang = (v.lang || '').replace('_', '-').toLowerCase();
-      return lang === 'pt-br';
+      return lang.startsWith('pt');
     });
 
-    // Preferred high-quality voices often found in Android/Chrome/iOS/macOS
-    const preferredNames = [
-      'luciana',
-      'francisca',
-      'leticia',
-      'letícia',
-      'camila',
-      'vitoria',
-      'vitória',
-      'yara',
-      'google português do brasil',
-      'brasil',
-      'brazil',
-    ];
-
-    let found: SpeechSynthesisVoice | undefined;
-
-    if (ptBrVoices.length > 0) {
-      // Look for preferred names first
-      found = ptBrVoices.find((v) =>
-        preferredNames.some((name) => v.name.toLowerCase().includes(name))
-      );
-      // Otherwise take first pt-BR voice
-      if (!found) found = ptBrVoices[0];
-    } else {
-      // Fallback to any Portuguese voice (e.g. pt-PT)
-      found = this.voices.find((v) =>
-        (v.lang || '').toLowerCase().startsWith('pt')
-      );
+    if (ptVoices.length === 0) {
+      this.selectedVoice = this.voices[0] || null;
+      return;
     }
 
-    this.selectedVoice = found || this.voices[0] || null;
+    // Rank all Portuguese voices by quality score
+    const ranked = [...ptVoices].sort((a, b) => this.scoreVoice(b) - this.scoreVoice(a));
+    this.selectedVoice = ranked[0];
+  }
+
+  /**
+   * Formats text for human-like natural prosody:
+   * Inserts gentle micro-pauses, softer breathing intervals, and lively cadence,
+   * avoiding the flat, monotone robotic drop of standard period stops.
+   */
+  public formatForHumanSpeech(text: string): string {
+    return text
+      // Convert abrupt exclamation endings to a warm exclamation followed by a slight pause
+      .replace(/!\s+/g, '! ... ')
+      // Convert abrupt periods to gentle ellipsis pauses for natural breathing
+      .replace(/\.\s+/g, '... ')
+      // Conversational pauses around questions and transitions
+      .replace(/Me conta,\s*/gi, 'Me conta... ')
+      .replace(/Dá uma olhadinha\./gi, 'Dá uma olhadinha!')
+      // Natural currency expansion if present
+      .replace(/R\$\s*([0-9]+)[,\.]([0-9]{2})/g, '$1 reais e $2 centavos')
+      .replace(/R\$\s*([0-9]+)/g, '$1 reais')
+      .trim();
   }
 
   /**
@@ -91,7 +167,9 @@ class SpeechService {
     this.unlocked = true;
 
     try {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (AudioCtx) {
         if (!this.audioContext) {
           this.audioContext = new AudioCtx();
@@ -119,7 +197,9 @@ class SpeechService {
   public playChime() {
     if (this.isMuted) return;
     try {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (!AudioCtx) return;
       if (!this.audioContext) {
         this.audioContext = new AudioCtx();
@@ -153,9 +233,10 @@ class SpeechService {
 
   /**
    * Central speak function fulfilling user requirement:
+   * - formats text with natural conversational cadence & micro-pauses
    * - cancels previous speech
    * - checks mute state
-   * - configures pt-BR, natural voice, rate, pitch
+   * - configures pt-BR, highest quality neural voice, lively human rate & pitch
    * - manages speaking state and visual waveform callbacks
    */
   public speak(
@@ -176,7 +257,6 @@ class SpeechService {
     this.cancel();
 
     if (this.isMuted) {
-      // If muted, we don't speak audio, but we can trigger immediate finish
       options?.onEnd?.();
       return;
     }
@@ -192,7 +272,10 @@ class SpeechService {
       this.initVoices();
     }
 
-    const utterance = new SpeechSynthesisUtterance(text);
+    // Format text for natural human phrasing
+    const humanizedText = this.formatForHumanSpeech(text);
+
+    const utterance = new SpeechSynthesisUtterance(humanizedText);
     this.currentUtterance = utterance; // Prevent garbage collection in Chrome/Safari
 
     utterance.lang = 'pt-BR';
@@ -200,9 +283,20 @@ class SpeechService {
       utterance.voice = this.selectedVoice;
     }
 
-    // Natural, refined pacing
-    utterance.rate = options?.rate ?? 0.98;
-    utterance.pitch = options?.pitch ?? 1.0;
+    // Dynamic prosody settings based on preset
+    let defaultRate = 1.04;
+    let defaultPitch = 1.06;
+
+    if (this.speechPreset === 'expressiva') {
+      defaultRate = 1.08;
+      defaultPitch = 1.08;
+    } else if (this.speechPreset === 'suave') {
+      defaultRate = 0.99;
+      defaultPitch = 1.03;
+    }
+
+    utterance.rate = options?.rate ?? defaultRate;
+    utterance.pitch = options?.pitch ?? defaultPitch;
     utterance.volume = 1.0;
 
     utterance.onstart = () => {
@@ -219,7 +313,10 @@ class SpeechService {
     };
 
     utterance.onerror = (event) => {
-      console.warn('SpeechSynthesis event error:', event);
+      // 'interrupted' or 'canceled' are normal when user clicks another option
+      if (event.error !== 'interrupted' && event.error !== 'canceled') {
+        console.warn('SpeechSynthesis event error:', event);
+      }
       this.isSpeaking = false;
       this.currentUtterance = null;
       this.notify();
@@ -284,8 +381,47 @@ class SpeechService {
     return this.isSpeaking;
   }
 
+  public getSelectedVoice(): SpeechSynthesisVoice | null {
+    return this.selectedVoice;
+  }
+
   public getSelectedVoiceName(): string {
-    return this.selectedVoice ? `${this.selectedVoice.name} (${this.selectedVoice.lang})` : 'Padrão pt-BR';
+    if (!this.selectedVoice) return 'Padrão pt-BR';
+    const cleanName = this.selectedVoice.name
+      .replace(/^Microsoft /i, '')
+      .replace(/Online \(Natural\) - Portuguese \(Brazil\)/i, '(Natural)')
+      .replace(/ - Portuguese \(Brazil\)/i, '')
+      .replace(/Portuguese \(Brazil\)/i, 'pt-BR');
+    return cleanName;
+  }
+
+  public getAvailablePortugueseVoices(): SpeechSynthesisVoice[] {
+    return this.voices
+      .filter((v) => {
+        const lang = (v.lang || '').replace('_', '-').toLowerCase();
+        return lang.startsWith('pt');
+      })
+      .sort((a, b) => this.scoreVoice(b) - this.scoreVoice(a));
+  }
+
+  public setVoiceByName(name: string) {
+    const found = this.voices.find((v) => v.name === name);
+    if (found) {
+      this.selectedVoice = found;
+      this.notify();
+    }
+  }
+
+  public setPreset(preset: SpeechPreset) {
+    this.speechPreset = preset;
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('bela_pizza_preset', preset);
+    }
+    this.notify();
+  }
+
+  public getPreset(): SpeechPreset {
+    return this.speechPreset;
   }
 
   public subscribe(listener: Listener): () => void {
@@ -307,3 +443,4 @@ class SpeechService {
 }
 
 export const speechService = new SpeechService();
+

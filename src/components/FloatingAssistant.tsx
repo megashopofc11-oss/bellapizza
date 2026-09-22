@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, X, Pizza, Flame, MessageCircle, Volume2, Mic } from 'lucide-react';
 import { ActiveSection } from '../types';
+import { speechService } from '../utils/speechService';
 
 interface FloatingAssistantProps {
   isSpeaking: boolean;
@@ -185,6 +186,65 @@ export const FloatingAssistant: React.FC<FloatingAssistantProps> = ({
                   </div>
                   <Volume2 className="w-4 h-4 text-[#e5be6b]" />
                 </button>
+              </div>
+
+              {/* Natural Voice Status & Tone Selector */}
+              <div className="mt-3.5 pt-3 border-t border-white/10">
+                <div className="flex items-center justify-between text-[11px] text-stone-300 mb-1.5 px-0.5">
+                  <span className="flex items-center gap-1.5 text-[#e5be6b] font-medium">
+                    <Sparkles className="w-3 h-3 text-[#e5be6b]" />
+                    <span>Voz da Bela:</span>
+                    <span className="text-stone-200 font-normal">
+                      {speechService.getSelectedVoiceName()}
+                    </span>
+                  </span>
+                </div>
+
+                {/* Tone Preset Buttons */}
+                <div className="grid grid-cols-3 gap-1.5 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      speechService.setPreset('natural-calorosa');
+                      speechService.speak('Olá! Essa é a minha voz natural e acolhedora.');
+                    }}
+                    className={`px-2 py-1.5 rounded-lg text-[10px] font-medium transition-all text-center border cursor-pointer ${
+                      speechService.getPreset() === 'natural-calorosa'
+                        ? 'bg-[#571424] text-[#e5be6b] border-[#e5be6b]'
+                        : 'bg-white/5 text-stone-300 border-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    ✨ Calorosa
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      speechService.setPreset('expressiva');
+                      speechService.speak('Perfeito! Que bom ter você aqui com a gente!');
+                    }}
+                    className={`px-2 py-1.5 rounded-lg text-[10px] font-medium transition-all text-center border cursor-pointer ${
+                      speechService.getPreset() === 'expressiva'
+                        ? 'bg-[#571424] text-[#e5be6b] border-[#e5be6b]'
+                        : 'bg-white/5 text-stone-300 border-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    🌟 Expressiva
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      speechService.setPreset('suave');
+                      speechService.speak('Seja muito bem-vindo à Bela Pizza.');
+                    }}
+                    className={`px-2 py-1.5 rounded-lg text-[10px] font-medium transition-all text-center border cursor-pointer ${
+                      speechService.getPreset() === 'suave'
+                        ? 'bg-[#571424] text-[#e5be6b] border-[#e5be6b]'
+                        : 'bg-white/5 text-stone-300 border-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    🕊️ Suave
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>
