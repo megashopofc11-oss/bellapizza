@@ -1,0 +1,131 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --wine-950: #120407;
+    --wine-900: #1d070c;
+    --wine-850: #2a0a12;
+    --wine-800: #3b0d19;
+    --wine-700: #571424;
+    --gold-300: #f5d48b;
+    --gold-400: #e5be6b;
+    --gold-500: #c99738;
+    --gold-600: #9e7223;
+    --cream-50: #fdfbf7;
+    --cream-100: #f6efe2;
+    --cream-200: #ede0cb;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+
+  body {
+    background-color: #120407;
+    color: #f6efe2;
+    overflow-x: hidden;
+  }
+}
+
+.font-serif-luxury {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
+.font-cinzel {
+  font-family: 'Cinzel', Georgia, serif;
+}
+
+/* Equalizer Bars Animation */
+@keyframes eqBar1 {
+  0%, 100% { height: 6px; }
+  50% { height: 22px; }
+}
+
+@keyframes eqBar2 {
+  0%, 100% { height: 18px; }
+  50% { height: 8px; }
+}
+
+@keyframes eqBar3 {
+  0%, 100% { height: 10px; }
+  50% { height: 26px; }
+}
+
+@keyframes eqBar4 {
+  0%, 100% { height: 24px; }
+  50% { height: 12px; }
+}
+
+@keyframes eqBar5 {
+  0%, 100% { height: 8px; }
+  50% { height: 20px; }
+}
+
+.animate-eq-1 { animation: eqBar1 0.75s ease-in-out infinite; }
+.animate-eq-2 { animation: eqBar2 0.65s ease-in-out infinite 0.1s; }
+.animate-eq-3 { animation: eqBar3 0.85s ease-in-out infinite 0.2s; }
+.animate-eq-4 { animation: eqBar4 0.7s ease-in-out infinite 0.15s; }
+.animate-eq-5 { animation: eqBar5 0.9s ease-in-out infinite 0.25s; }
+
+/* Subtle Ambient Glow */
+@keyframes ambientPulse {
+  0%, 100% {
+    transform: scale(1) translate(0, 0);
+    opacity: 0.35;
+  }
+  50% {
+    transform: scale(1.1) translate(15px, -15px);
+    opacity: 0.55;
+  }
+}
+
+.animate-ambient {
+  animation: ambientPulse 12s ease-in-out infinite alternate;
+}
+
+/* Glassmorphism Classes */
+.glass-wine {
+  background: rgba(29, 7, 12, 0.78);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(229, 190, 107, 0.18);
+}
+
+.glass-wine-card {
+  background: linear-gradient(145deg, rgba(42, 10, 18, 0.82) 0%, rgba(24, 5, 10, 0.92) 100%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(229, 190, 107, 0.16);
+  box-shadow: 0 16px 36px -10px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.glass-gold-glow {
+  box-shadow: 0 0 30px rgba(201, 151, 56, 0.2), inset 0 0 15px rgba(201, 151, 56, 0.08);
+}
+
+/* Golden text gradient */
+.text-gold-gradient {
+  background: linear-gradient(135deg, #fff2db 0%, #e5be6b 50%, #c99738 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #120407;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3b0d19;
+  border-radius: 9999px;
+  border: 1px solid rgba(229, 190, 107, 0.2);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #571424;
+}

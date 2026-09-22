@@ -1,0 +1,6 @@
+{
+  "name": "Bela Pizza",
+  "description": "Biosite premium e interativo com atendimento por voz para a pizzaria Bela Pizza.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
